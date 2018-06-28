@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+	<head>
+	<meta charset="utf-8">
+	<title>HTML5 Canvas带边框的粒子动画进度条DEMO演示</title>
+
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="simplex-noise.js"></script>
+	<style>
+	body, html {
+	  margin: 0px;
+	  padding: 0px;
+	  background: #fff;
+	}
+	</style>
+	</head>
+	<body>
+		<div style="text-align:center;clear:both;">
+		</div>
+		<canvas id="canvas"></canvas>
+		<script type="text/javascript">
+			$(function() {
+				var canvas = $('#canvas')[0],
+					ctx = canvas.getContext('2d'),
+					canvasW = $(document).width(),
+					canvasH = $(document).height();
+
+				ctx.fillStyle = 'black';
+				canvas.width = canvasW;
+				canvas.height = canvasH;
+
+				var stops = [50, 150, 160, 300, 500],
+			      stopIndex = 0,
+			      delay = 0,
+			      progress = 0,
+			      time = 0;
+
+				var loading = {
+					h: 50,
+					w: 500,
+					x: canvasW/2-250,
+					y: canvasH/2,
+					dx: 0,
+					dy: 0
+				}
+				// 噪声
+				var simplex = new SimplexNoise(),
+					simplexVal = 0,
+     			 	simplexStart = 20,
+     			 	rate = 2, // 控制粒子多少，值越大，粒子越多
+					particles = [];
+
+				drawLoading();
+
+				function drawLoading() {
+					ctx.globalCompositeOperation = 'source-over';
+					// 必要的
+					ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    				ctx.fillRect(0, 0, canvasW, canvasH); 
+    				// 进度条框
+					ctx.fillStyle = '#000';
+					ctx.fillRect(canvasW/2-250, loading.y, 500, loading.h);
+					ctx.strokeStyle = 'rgba(0,255,0,.5)';
+					ctx.strokeRect(canvasW/2-250, loading.y, 500, loading.h);
+					ctx.stroke();
+					
+					// 进度线
+					ctx.fillStyle = '#0f0';
+					ctx.fillRect(loading.x, loading.y, 1, loading.h);
+					
+					// 进度百分比
+					ctx.font = '20px Arial';
+					ctx.fillText(Math.floor(progress/5)+'%', canvasW/2-20, canvasH/2 + 30);
+					ctx.save();
+					if (stops[stopIndex] === progress) {
+						stopIndex++;
+						delay = 50;
+					} else {
+						if (delay == 0 && progress < stops[stopIndex]) {// 移动
+							loading.dx = -1;
+							loading.x += 2;
+							progress += 2;
+						} else {// 没有在移动
+							loading.dx = 0;
+							delay --;
+						}
+					}
+
+					// 画噪声点点
+					var i = 0;
+					for(i in particles) {
+						var p = particles[i];	
+						if (time > p.die) {
+							p.o -= 0.01;
+							if(p.o < 0) {
+								particles.splice(i, 1);
+							}
+						}
+						p.x += p.vx;
+						p.y += p.vy;
+
+						p.x += p.sourcedx / 10;
+						p.y += p.sourcedy / 10;
+
+						if (p.simplexIndex > simplexStart){
+							p.simplexVal = 	simplex.noise3D(p.x/100, p.y/100, time/100);
+						}
+						
+						p.simplexIndex ++;
+						p.x += p.simplexVal;
+						p.y +=p.simplexVal;
+
+						if(p.x < 0+20 || p.x > canvasW-20) {
+					        p.vx *= -1.015;
+					      }
+					      if(p.y < 0+20 || p.y > canvasH-20) {
+					        p.vy *= -1.015;
+					      }
+					    // ctx.globalCompositeOperation = 'copy';
+						ctx.beginPath();
+						ctx.fillStyle = 'rgba(0,255,0,'+p.o+')';
+						ctx.arc(p.x, p.y, p.r, 0, 2*Math.PI, true);
+						ctx.fill();
+						ctx.save();
+					}
+	
+					if (loading.dx !== 0) { // 进度条在移动
+						for(i = 0; i<rate;i++){
+							var particle = {
+							x: loading.x,
+							y: loading.y + Math.random()*loading.h,
+							r: Math.random() + 0.5,
+							vx: (Math.random() * -2),
+							vy: (Math.random() - 0.5),
+							o: 1, //?
+							birth: time,
+							die: time + (Math.random()*50+50),
+							sourcedx: loading.dx,
+							sourcedy: loading.dy,
+							simplexVal: 0,
+							simplexIndex: 0
+						}
+							particles.push(particle);
+						}	
+					}
+
+					if (progress <= loading.w) {
+						time ++;
+						window.requestAnimationFrame(drawLoading);
+					}				
+				}			
+			});
+		</script>
+	</body>
+</html>
